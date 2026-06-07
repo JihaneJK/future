@@ -1,18 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { notificationAPI } from '../api/api';
 
 const NavBar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
 
   // Scroll en haut a chaque changement de page
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     setLastScrollY(0);
   }, [location.pathname]);
+
+  // Polling notifications non lues
+  useEffect(() => {
+    if (!user) return;
+    const fetchCount = async () => {
+      try {
+        const data = await notificationAPI.getUnreadCount();
+        setNotifCount(data?.count || 0);
+      } catch (e) {}
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Gestion du scroll
   useEffect(() => {
@@ -126,16 +142,36 @@ const NavBar = () => {
         <div className="flex" style={{ gap: 12 }}>
           {user ? (
             <>
-              <Link to="/dashboard" onClick={scrollToTop}>
+              <Link to="/dashboard" onClick={scrollToTop} style={{ position: 'relative', textDecoration: 'none' }}>
                 <button style={{
                   background: 'rgba(255,255,255,0.1)',
                   color: '#fff',
                   padding: '8px 16px',
                   borderRadius: 20,
                   fontWeight: 600,
-                  fontSize: 13
+                  fontSize: 13,
+                  cursor: 'pointer'
                 }}>
                   Dashboard
+                  {notifCount > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -6,
+                      background: '#FF6B6B',
+                      color: '#fff',
+                      borderRadius: 50,
+                      width: 18,
+                      height: 18,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {notifCount}
+                    </span>
+                  )}
                 </button>
               </Link>
               <button 

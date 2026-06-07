@@ -4,11 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\JobController;
 use App\Http\Controllers\Api\SchoolController;
+use App\Http\Controllers\Api\ApplicationController;
 use App\Models\User;
 use App\Models\Job;
 use App\Models\Message;
 use App\Models\Application;
 use App\Models\Notification;
+use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -123,6 +125,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json(['success' => true, 'application' => $application], 201);
     });
+
+    // Postuler à une école
+    Route::post('/schools/{id}/apply', [ApplicationController::class, 'storeSchool']);
 
     // Mettre à jour le statut d'une candidature
     Route::put('/applications/{id}/status', function (Request $request, $id) {

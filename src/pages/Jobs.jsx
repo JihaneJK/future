@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { jobAPI } from '../api/api';
+import Swal from 'sweetalert2';
 
 const C = {
   primary: "#6C63FF",
@@ -62,9 +63,9 @@ export default function Jobs() {
     if (!saved.find(j => j.id === job.id)) {
       saved.push(job);
       localStorage.setItem('savedJobs', JSON.stringify(saved));
-      alert('Offre sauvegardée! 💾');
+      Swal.fire({ icon: 'success', title: 'Offre sauvegardée !', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
     } else {
-      alert('Déjà sauvegardée!');
+      Swal.fire({ icon: 'info', title: 'Déjà sauvegardée !', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
     }
   };
 
@@ -91,16 +92,16 @@ export default function Jobs() {
         const apps = JSON.parse(localStorage.getItem('myApplications') || '[]');
         apps.push({ id: Date.now(), jobId: job.id, status: 'pending', date: new Date().toISOString() });
         localStorage.setItem('myApplications', JSON.stringify(apps));
-        alert('✅ Candidature envoyée avec succès! Le recruteur vous contactera.');
+        Swal.fire({ icon: 'success', title: 'Candidature envoyée !', text: 'Le recruteur vous contactera.', confirmButtonColor: '#4CAF50' });
       } else {
-        alert('❌ ' + (result.message || 'Erreur lors de la candidature'));
+        Swal.fire({ icon: 'error', title: 'Erreur', text: result.message || 'Erreur lors de la candidature', confirmButtonColor: '#FF6B6B' });
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Erreur inconnue';
       if (err.response?.status === 409) {
-        alert('⚠️ Vous avez déjà postulé à cette offre.');
+        Swal.fire({ icon: 'info', title: 'Déjà postulé', text: 'Vous avez déjà postulé à cette offre.', confirmButtonColor: '#6C63FF' });
       } else {
-        alert('❌ ' + msg);
+        Swal.fire({ icon: 'error', title: 'Erreur', text: msg, confirmButtonColor: '#FF6B6B' });
       }
     } finally {
       setApplying(false);

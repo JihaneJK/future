@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Reviews from '../components/Reviews';
+import { schoolAPI } from '../api/api';
+import { useAuth } from '../context/AuthContext';
+import Swal from 'sweetalert2';
 
 const SchoolDetail = () => {
   const { slug } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+  const [applying, setApplying] = useState(false);
 
   // Données locales
   const schoolData = {
@@ -49,6 +55,34 @@ const SchoolDetail = () => {
       if (index > -1) savedSchools.splice(index, 1);
     }
     localStorage.setItem('savedSchools', JSON.stringify(savedSchools));
+  };
+
+  const applyToSchool = async () => {
+    if (!user) { navigate('/login'); return; }
+    if (applying) return;
+    setApplying(true);
+    try {
+      const res = await schoolAPI.apply(school.id);
+      if (res.success) {
+        Swal.fire({ icon: 'success', title: 'Candidature envoyée !', text: `Votre candidature a été envoyée à ${school.name}. L'école vous contactera bientôt.`, confirmButtonColor: '#4CAF50' });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Erreur', text: res.error || 'Erreur lors de la candidature', confirmButtonColor: '#FF6B6B' });
+      }
+    } catch (err) {
+      const status = err.response?.status;
+      const errorMsg = err.response?.data?.error || 'Erreur lors de la candidature';
+      if (status === 409) {
+        Swal.fire({ icon: 'info', title: 'Déjà postulé', text: errorMsg, confirmButtonColor: '#6C63FF' });
+      } else if (status === 404) {
+        Swal.fire({ icon: 'error', title: 'École introuvable', text: errorMsg, confirmButtonColor: '#FF6B6B' });
+      } else if (status === 401) {
+        navigate('/login');
+      } else {
+        Swal.fire({ icon: 'error', title: 'Erreur', text: errorMsg, confirmButtonColor: '#FF6B6B' });
+      }
+    } finally {
+      setApplying(false);
+    }
   };
 
   // Vérifier si sauvegardé
@@ -124,8 +158,8 @@ const SchoolDetail = () => {
               <button onClick={handleSave} className={saved ? "btn btn-primary" : "btn btn-outline"} style={{ width: '100%', marginBottom: 12 }}>
                 {saved ? '❤️ Sauvegardé' : '🤍 Sauvegarder'}
               </button>
-              <button className="btn btn-primary" style={{ width: '100%' }}>
-                📝 Postuler maintenant
+              <button onClick={applyToSchool} disabled={applying} className="btn btn-primary" style={{ width: '100%' }}>
+                {applying ? '📨 Envoi...' : '📝 Postuler maintenant'}
               </button>
             </div>
             

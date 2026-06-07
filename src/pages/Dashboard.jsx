@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { schoolsData } from '../api/data';
+import { notificationAPI } from '../api/api';
 
 // Couleurs
 const C = {
@@ -25,6 +26,8 @@ export default function Dashboard() {
   const [savedSchools, setSavedSchools] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   console.log('[Dashboard] Rendered with user:', JSON.stringify(user));
   console.log('[Dashboard] user?.id:', user?.id);
@@ -54,6 +57,24 @@ export default function Dashboard() {
     setApplications(apps);
   }, []);
 
+  // Charger les notifications
+  useEffect(() => {
+    if (!user) return;
+    const loadNotifs = async () => {
+      try {
+        const [notifs, unread] = await Promise.all([
+          notificationAPI.getAll().catch(() => []),
+          notificationAPI.getUnreadCount().catch(() => ({ count: 0 }))
+        ]);
+        setNotifications(notifs || []);
+        setUnreadCount(unread?.count || 0);
+      } catch (e) {}
+    };
+    loadNotifs();
+    const interval = setInterval(loadNotifs, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Supprimer une école sauvegardée
   const removeSchool = (slug) => {
     const updated = savedSchools.filter(s => s.slug !== slug);
@@ -71,7 +92,8 @@ export default function Dashboard() {
   const tabs = [
     { id: 'saved', label: '💾 Sauvegardées', count: savedSchools.length + savedJobs.length },
     { id: 'applications', label: '📨 Candidatures', count: applications.length },
-    { id: 'jobs', label: '💼 Offres', count: savedJobs.length }
+    { id: 'jobs', label: '💼 Offres', count: savedJobs.length },
+    { id: 'notifications', label: '🔔 Notifications', count: unreadCount }
   ];
 
   // Calculate progress
@@ -274,6 +296,108 @@ export default function Dashboard() {
                     <h4 style={{ fontWeight: 800, fontSize: 15, marginTop: 8 }}>{job.title}</h4>
                     <p style={{ fontSize: 13, color: C.muted }}>🏢 {job.company} • 📍 {job.city}</p>
                     <span style={{ fontWeight: 700, color: C.green, marginTop: 8, display: 'block' }}>{job.salary}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* NOTIFICATIONS */}
+        {activeTab === 'notifications' && (
+          <>
+            <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 16 }}>
+              🔔 Notifications
+              {unreadCount > 0 && (
+                <span style={{ fontSize: 14, color: C.muted, fontWeight: 400, marginLeft: 8 }}>
+                  ({unreadCount} non lue{unreadCount > 1 ? 's' : ''})
+                </span>
+              )}
+            </h3>
+
+            {notifications.length === 0 ? (
+              <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>🔔</div>
+                <p style={{ color: C.muted }}>Aucune notification</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      await notificationAPI.markAllRead();
+                      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                      setUnreadCount(0);
+                    }}
+                    style={{
+                      alignSelf: 'flex-end',
+                      background: 'transparent',
+                      border: 'none',
+                      color: C.primary,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginBottom: 8
+                    }}
+                  >
+                    Tout marquer comme lu
+                  </button>
+                )}
+                {notifications.map(n => (
+                  <div
+                    key={n.id}
+                    onClick={async () => {
+                      if (!n.read) {
+                        await notificationAPI.markAsRead(n.id);
+                        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+                        setUnreadCount(prev => Math.max(0, prev - 1));
+                      }
+                    }}
+                    className="card"
+                    style={{
+                      padding: 16,
+                      cursor: 'pointer',
+                      background: n.read ? C.white : C.primaryLight,
+                      borderLeft: n.read ? 'none' : `4px solid ${C.primary}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 20 }}>
+                        {n.type === 'message' ? '💬' :
+                         n.type?.startsWith('application') ? '📋' :
+                         n.type === 'school_application' ? '🏫' : '🔔'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: n.read ? 400 : 700, fontSize: 14, color: C.dark }}>
+                          {n.type === 'message' ? `Réponse de ${n.data?.sender_name || 'un recruteur'}` :
+                           n.type === 'application_accepted' ? 'Candidature acceptée 🎉' :
+                           n.type === 'application_rejected' ? 'Candidature refusée' :
+                           n.type === 'school_application' ? `Candidature à ${n.data?.school_name || 'une école'}` :
+                           n.type === 'application' ? `Nouvelle candidature de ${n.data?.student_name || 'un étudiant'}` :
+                           'Notification'}
+                        </div>
+                        <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                          {n.type === 'message' ? (n.data?.preview || 'Nouveau message reçu') :
+                           n.type === 'application_accepted' ? 'Félicitations ! Votre candidature a été acceptée.' :
+                           n.type === 'application_rejected' ? 'Votre candidature a été refusée.' :
+                           n.type === 'school_application' ? `L'école ${n.data?.school_name || ''} a reçu votre candidature.` :
+                           n.data?.job_title || ''}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+                          {n.created_at ? new Date(n.created_at).toLocaleString('fr-FR') : ''}
+                        </div>
+                      </div>
+                      {!n.read && (
+                        <span style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: C.primary,
+                          flexShrink: 0,
+                          marginTop: 6
+                        }} />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

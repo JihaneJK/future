@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { schoolsData } from '../api/data';
 import { useAuth } from '../context/AuthContext';
+import Swal from 'sweetalert2';
 
 const C = {
   primary: "#6C63FF",
@@ -55,9 +56,9 @@ export default function Schools() {
     if (!saved.includes(slug)) {
       saved.push(slug);
       localStorage.setItem('savedSchools', JSON.stringify(saved));
-      alert('École sauvegardée! 💾');
+      Swal.fire({ icon: 'success', title: 'École sauvegardée !', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
     } else {
-      alert('Déjà sauvegardée!');
+      Swal.fire({ icon: 'info', title: 'Déjà sauvegardée !', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
     }
   };
 
@@ -68,31 +69,34 @@ export default function Schools() {
   };
 
   // Postuler à une école
-  const applyToSchool = (school) => {
-    if (!user) {
-      navigate('/login');
-      return;
+  const [applying, setApplying] = useState(false);
+  const applyToSchool = async (school) => {
+    if (!user) { navigate('/login'); return; }
+    if (applying) return;
+    setApplying(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/schools/${school.id}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+      if (res.status === 200) {
+        Swal.fire({ icon: 'success', title: 'Candidature envoyée !', text: `Votre candidature a été envoyée à ${school.name}. L'école vous contactera bientôt.`, confirmButtonColor: '#4CAF50' });
+      } else if (res.status === 409) {
+        Swal.fire({ icon: 'info', title: 'Déjà postulé', text: 'Vous avez déjà postulé à cette école', confirmButtonColor: '#6C63FF' });
+      } else if (res.status === 404) {
+        Swal.fire({ icon: 'error', title: 'École introuvable', text: 'Cette école n\'existe pas', confirmButtonColor: '#FF6B6B' });
+      } else if (res.status === 401) {
+        navigate('/login');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        Swal.fire({ icon: 'error', title: 'Erreur', text: data.error || 'Erreur lors de la candidature', confirmButtonColor: '#FF6B6B' });
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Erreur', text: 'Impossible de contacter le serveur', confirmButtonColor: '#FF6B6B' });
+    } finally {
+      setApplying(false);
     }
-
-    const application = {
-      id: Date.now(),
-      schoolId: school.id,
-      schoolName: school.name,
-      schoolCity: school.city,
-      schoolSlug: school.slug,
-      studentId: user.id || 'guest',
-      studentName: user.first_name + ' ' + user.last_name,
-      studentEmail: user.email,
-      studentPhone: user.phone || '',
-      date: new Date().toISOString(),
-      status: 'pending'
-    };
-
-    const apps = JSON.parse(localStorage.getItem('myApplications') || '[]');
-    apps.push(application);
-    localStorage.setItem('myApplications', JSON.stringify(apps));
-
-    alert(`Candidature envoyée à ${school.name}! 📨\n\nL'école vous contactera bientôt.`);
   };
 
   return (
@@ -233,19 +237,20 @@ export default function Schools() {
                 {/* Bouton Postuler */}
                 <button 
                   onClick={() => applyToSchool(school)}
+                  disabled={applying}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
                     borderRadius: 10, 
                     border: 'none', 
-                    background: C.primary, 
+                    background: applying ? '#ccc' : C.primary, 
                     color: C.white, 
                     fontWeight: 700, 
-                    cursor: 'pointer',
+                    cursor: applying ? 'not-allowed' : 'pointer',
                     marginBottom: 8
                   }}
                 >
-                  📨 Postuler
+                  {applying ? '📨 Envoi...' : '📨 Postuler'}
                 </button>
                 
                 {/* Voir détails */}

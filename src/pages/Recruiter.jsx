@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { recruiterAPI, messageAPI, notificationAPI } from '../api/api';
 
@@ -30,6 +30,16 @@ export default function Recruiter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [selectedConv?.messages]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -67,19 +77,23 @@ export default function Recruiter() {
     if (user) loadData();
   }, [user]);
 
-  // Polling notifications toutes les 15s
+  // Polling notifications + conversations toutes les 10s
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(async () => {
       try {
-        const [notifsData, unreadData] = await Promise.all([
+        const [notifsData, unreadData, convsData] = await Promise.all([
           notificationAPI.getAll().catch(() => []),
-          notificationAPI.getUnreadCount().catch(() => ({ count: 0 }))
+          notificationAPI.getUnreadCount().catch(() => ({ count: 0 })),
+          messageAPI.getConversations().catch(() => [])
         ]);
         setNotifications(notifsData || []);
         setUnreadCount(unreadData?.count || 0);
+        if (convsData.length > 0) {
+          setConversations(formatConversations(convsData, user));
+        }
       } catch (e) {}
-    }, 15000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -179,10 +193,7 @@ export default function Recruiter() {
     setNewMessage('');
 
     try {
-      const recipientId = selectedConv.messages.length > 0
-        ? selectedConv.messages[0].role === 'user' ? selectedConv.id : user?.id
-        : selectedConv.id;
-      await messageAPI.sendMessage(recipientId, newMessage);
+      await messageAPI.sendMessage(selectedConv.id, newMessage);
     } catch (err) {
       console.warn('Erreur envoi message:', err);
     }
@@ -570,7 +581,7 @@ export default function Recruiter() {
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {selectedConv.messages.length === 0 ? (
+                      {selectedConv.messages.length === 0 ? (
                       <div style={{ textAlign: 'center', color: C.muted, padding: 20 }}>
                         Aucun message. Envoyez votre premier message.
                       </div>
@@ -592,22 +603,37 @@ export default function Recruiter() {
                         </div>
                       ))
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   <div style={{ padding: 16, borderTop: '1px solid #eee' }}>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <input
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                      <textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
                         placeholder="Tapez votre message..."
+                        rows={1}
                         style={{
                           flex: 1,
                           padding: '12px 16px',
                           borderRadius: 25,
                           border: '1px solid #eee',
                           outline: 'none',
-                          fontSize: 14
+                          fontSize: 14,
+                          resize: 'none',
+                          fontFamily: 'inherit',
+                          lineHeight: 1.4,
+                          minHeight: 44
+                        }}
+                        onInput={(e) => {
+                          e.target.style.height = 'auto';
+                          e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
                         }}
                       />
                       <button
@@ -624,7 +650,8 @@ export default function Recruiter() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: newMessage.trim() ? 'pointer' : 'not-allowed',
-                          opacity: newMessage.trim() ? 1 : 0.5
+                          opacity: newMessage.trim() ? 1 : 0.5,
+                          flexShrink: 0
                         }}
                       >
                         ➤

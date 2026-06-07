@@ -157,6 +157,14 @@ export const schoolAPI = {
     }
     const response = await api.get(`/schools/${id}`);
     return response.data;
+  },
+
+  apply: async (schoolId) => {
+    if (USE_LOCAL_DATA) {
+      return { data: {} };
+    }
+    const response = await api.post(`/schools/${schoolId}/apply`);
+    return response.data;
   }
 };
 
