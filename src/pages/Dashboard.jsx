@@ -352,6 +352,11 @@ export default function Dashboard() {
                         setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
                         setUnreadCount(prev => Math.max(0, prev - 1));
                       }
+                      if (n.type === 'message' && n.data?.sender_id) {
+                        localStorage.setItem('contactRecruiter', JSON.stringify({ id: n.data.sender_id, name: n.data.sender_name }));
+                        navigate('/chat');
+                        return;
+                      }
                     }}
                     className="card"
                     style={{

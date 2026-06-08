@@ -349,6 +349,10 @@ export default function Chat() {
                               setNotifCount(prev => Math.max(0, prev - 1));
                             }
                             setShowNotifs(false);
+                            if (n.type === 'message' && n.data?.sender_id) {
+                              const conv = recruiters.find(r => r.id === n.data.sender_id);
+                              if (conv) handleSelectUser(conv);
+                            }
                           }}
                           style={{
                             padding: '10px 12px',

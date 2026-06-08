@@ -304,7 +304,13 @@ export default function Recruiter() {
                                 setUnreadCount(prev => Math.max(0, prev - 1));
                               }
                               setShowNotifs(false);
-                              if (n.type === 'message') setActiveTab('messages');
+                              if (n.type === 'message') {
+                                setActiveTab('messages');
+                                if (n.data?.sender_id) {
+                                  const conv = conversations.find(c => c.id === n.data.sender_id);
+                                  if (conv) setSelectedConv(conv);
+                                }
+                              }
                               if (n.type === 'application') setActiveTab('candidates');
                             }}
                             style={{
