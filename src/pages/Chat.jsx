@@ -75,6 +75,7 @@ export default function Chat() {
 
       const msgsMap = {};
       (convs || []).forEach(c => {
+        if (!c.user || c.user.id === user?.id) return;
         if (c.messages) {
           msgsMap[c.user.id] = c.messages;
         }
@@ -137,6 +138,7 @@ export default function Chat() {
         if (convs && convs.length > 0) {
           const msgsMap = {};
           convs.forEach(c => {
+            if (!c.user || c.user.id === user?.id) return;
             if (c.messages) msgsMap[c.user.id] = c.messages;
           });
           setConversationsMap(msgsMap);
@@ -164,7 +166,12 @@ export default function Chat() {
 
   // Mettre à jour les messages quand la conversationsMap change
   useEffect(() => {
-    if (selectedUser && conversationsMap[selectedUser.id]) {
+    if (!selectedUser) {
+      setMessages([]);
+      return;
+    }
+    if (selectedUser.id === user?.id) return;
+    if (conversationsMap[selectedUser.id]) {
       const msgs = conversationsMap[selectedUser.id].map(m => ({
         id: m.id,
         from: m.sender_id,
@@ -176,6 +183,8 @@ export default function Chat() {
         date: m.created_at
       }));
       setMessages(msgs);
+    } else {
+      setMessages([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser?.id, conversationsMap]);
@@ -458,7 +467,7 @@ export default function Chat() {
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', background: C.white }}>
+        <div style={{ display: 'flex', flexDirection: 'column', background: C.white, height: '100%', overflow: 'hidden' }}>
           {selectedUser ? (
             <>
               <div style={{ padding: 16, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -485,7 +494,7 @@ export default function Chat() {
                 </div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
                 {messages.length === 0 ? (
                   <div style={{ textAlign: 'center', color: C.muted, padding: 40 }}>
                     <p>Aucun message</p>

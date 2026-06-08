@@ -199,6 +199,7 @@ Route::middleware('auth:sanctum')->group(function () {
         try {
             $messages = Message::where('sender_id', $user->id)
                 ->orWhere('receiver_id', $user->id)
+                ->whereColumn('sender_id', '<>', 'receiver_id')
                 ->with(['sender:id,first_name,last_name', 'receiver:id,first_name,last_name'])
                 ->orderBy('created_at', 'desc')
                 ->get()

@@ -572,15 +572,15 @@ export default function Recruiter() {
               )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
               {selectedConv ? (
                 <>
-                  <div style={{ padding: 16, borderBottom: '1px solid #eee' }}>
+                  <div style={{ padding: 16, borderBottom: '1px solid #eee', flexShrink: 0 }}>
                     <h3 style={{ fontWeight: 800 }}>{selectedConv.name}</h3>
                     <span style={{ fontSize: 12, color: C.green }}>● En ligne</span>
                   </div>
 
-                  <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
                       {selectedConv.messages.length === 0 ? (
                       <div style={{ textAlign: 'center', color: C.muted, padding: 20 }}>
                         Aucun message. Envoyez votre premier message.
